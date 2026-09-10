@@ -1,0 +1,48 @@
+{
+  "name": "SDP Agile Work Board",
+  "widgets": [
+    {
+      "name": "Team Board",
+      "description": "Yönetici görünümü - tüm ticketlar, atama ve sprint planlama",
+      "locations": [
+        {
+          "name": "web_tab",
+          "is_enabled": true
+        }
+      ],
+      "property_json": {
+        "icons": {
+          "dark": "/app/icon-dark.png",
+          "light": "/app/icon-light.png"
+        },
+        "white_list": [],
+        "visible_to": [
+          "SDAdmin"
+        ]
+      },
+      "url": "/app/manager.html"
+    },
+    {
+      "name": "My Tickets",
+      "description": "Teknisyen görünümü - sadece kendine atanmış ticketlar",
+      "locations": [
+        {
+          "name": "web_tab",
+          "is_enabled": true
+        }
+      ],
+      "property_json": {
+        "icons": {
+          "dark": "/app/icon-dark.png",
+          "light": "/app/icon-light.png"
+        },
+        "white_list": [],
+        "visible_to": [
+          "AgileTechnician"
+        ]
+      },
+      "url": "/app/technician.html"
+    }
+  ],
+  "connections": []
+}

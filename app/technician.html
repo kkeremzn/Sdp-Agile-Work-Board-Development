@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDP Agile Work Board</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="top-header">
+      <div>
+        <h1 id="boardTitle">SDP Agile Work Board <span class="version-badge" id="appVersionBadge"></span></h1>
+        <p id="boardSubtitle">Agile Project Management Workspace for ServiceDesk Plus</p>
+      </div>
+      <div class="header-actions">
+        <button id="switchSpaceBtn" class="secondary-btn">🗂 <span id="currentSpaceName">Space Seç</span> ▾</button>
+        <span class="live-badge" id="roleBadge">Teknisyen <span id="detectedUserName" style="font-weight:400; opacity:0.85;"></span></span>
+        <button id="darkModeBtn" class="secondary-btn">Karanlık Mod</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="board">Board</button>
+      <button class="tab-btn" data-tab="backlog">Backlog</button>
+      <button class="tab-btn" data-tab="list">List</button>
+      <button class="tab-btn" data-tab="reports">Raporlar</button>
+    </nav>
+
+    <section class="filter-bar" id="filterBar">
+      <input id="searchInput" type="text" placeholder="Ara: SAG-2, başlık..." />
+      <div class="filter-chip-group" id="typeFilterChips">
+        <button class="filter-chip" data-type-filter="Story">📗 Story</button>
+        <button class="filter-chip" data-type-filter="Task">✔️ Task</button>
+        <button class="filter-chip" data-type-filter="Bug">🐞 Bug</button>
+      </div>
+      <select id="epicFilter"><option value="">Tüm Epic'ler</option></select>
+      <select id="priorityFilter"><option value="">Tüm Öncelikler</option></select>
+      <select id="slaFilter">
+        <option value="">Tüm Teslim Durumları</option>
+        <option value="None">⚪ Tarih Girilmemiş</option>
+        <option value="Healthy">🟢 Sağlıklı</option>
+        <option value="At Risk">🟡 Riskli</option>
+        <option value="Breached">🔴 Tarihi Geçti</option>
+      </select>
+      <div class="assignee-filter-dropdown">
+        <button class="filter-chip" id="assigneeFilterToggleBtn">👤 Atanan <span id="assigneeFilterCount"></span> ▾</button>
+        <div class="assignee-filter-panel" id="assigneeFilterPanel">
+          <input type="text" id="assigneeFilterSearch" placeholder="Teknisyen ara..." />
+          <div class="assignee-filter-list" id="assigneeFilterList"></div>
+        </div>
+      </div>
+      <button class="secondary-btn" id="clearAllFiltersBtn">Tüm Filtreleri Temizle</button>
+    </section>
+
+    <main>
+      <section id="dashboardTab" class="tab-content active">
+            <section class="kpi-grid">
+              <div class="kpi-card kpi-card-issue">
+                <span class="kpi-label"><span class="kpi-icon-dot kpi-icon-issue"></span>Toplam İş <small>(Story + Task + Bug)</small></span>
+                <strong id="kpiTotal">0</strong>
+              </div>
+              <div class="kpi-card kpi-card-epic">
+                <span class="kpi-label"><span class="kpi-icon-dot kpi-icon-epic"></span>Aktif Epic</span>
+                <strong id="kpiActiveEpic">0</strong>
+              </div>
+              <div class="kpi-card kpi-card-sprint">
+                <span class="kpi-label"><span class="kpi-icon-dot kpi-icon-sprint"></span>Aktif Sprint</span>
+                <strong id="kpiActiveSprint">0</strong>
+              </div>
+              <div class="kpi-card">
+                <span class="kpi-label">İşlemdeki İş <small>(Open / Resolved / Closed hariç)</small></span>
+                <strong id="kpiInProgress">0</strong>
+              </div>
+              <div class="kpi-card success">
+                <span class="kpi-label">Tamamlanan İş <small>(Çözüldü + Kapandı)</small></span>
+                <strong id="kpiCompleted">0</strong>
+              </div>
+            </section>
+        <div class="section-title">
+          <h2>Dashboard Özeti</h2>
+          <p>Operasyonel duruma genel bakış. Tüm göstergeler SDP'den yüklenen mevcut Space verisinden hesaplanır.</p>
+        </div>
+        <div id="dashboardSnapshot" class="panel dashboard-snapshot"></div>
+        <div class="dashboard-grid dashboard-grid-focused">
+          <div class="panel dashboard-status-panel">
+            <div class="dashboard-panel-head">
+              <div>
+                <h3>Durum Dağılımı</h3>
+                <p class="dashboard-panel-subtitle">İşler görünümünde yalnızca Story, Task ve Bug kayıtlarının durumları baz alınır. Epic ve Sprint durumlarını üstteki sekmelerden ayrı görebilirsin.</p>
+              </div>
+            </div>
+            <div id="statusSummary"></div>
+          </div>
+          <div class="panel dashboard-workload-panel">
+            <div class="dashboard-panel-head">
+              <div>
+                <h3>Personel İş Yükü</h3>
+                <p class="dashboard-panel-subtitle">SDP'deki mevcut teknisyenlerin tamamı gösterilir. Bir teknisyene tıklayarak üzerindeki devam eden işleri açabilirsin.</p>
+              </div>
+            </div>
+            <div id="assigneeSummary"></div>
+          </div>
+          <div class="panel dashboard-wide-panel dashboard-type-panel">
+            <div class="dashboard-panel-head">
+              <div>
+                <h3>İş Tipi Dağılımı</h3>
+                <p class="dashboard-panel-subtitle">Story, Task ve Bug sayılarını gösterir. Bir tipe tıklayarak işlerin Epic ve teknisyen bilgisini görebilirsin.</p>
+              </div>
+            </div>
+            <div id="typeDistribution"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="boardTab" class="tab-content">
+        <div class="board-view-toggle">
+          <button class="filter-chip active" id="boardViewIssuesBtn">📋 İşler</button>
+          <button class="filter-chip" id="boardViewSprintsBtn">🏃 Sprintler</button>
+        </div>
+        <div class="board-wrapper">
+          <div id="kanbanBoard" class="kanban-board"></div>
+        </div>
+      </section>
+
+      <section id="backlogTab" class="tab-content">
+        <div class="section-title">
+          <h2>Backlog</h2>
+          <p>Sprint'e alınmamış işler burada. Sprint içine sürükleyince otomatik taşınır.</p>
+        </div>
+        <div id="backlogContainer"></div>
+      </section>
+
+      <section id="listTab" class="tab-content">
+        <div class="section-title">
+          <h2>List</h2>
+          <p>Epic → Story/Task/Bug → Alt Görev hiyerarşisi, tek ekranda.</p>
+        </div>
+        <div id="listViewContainer" class="list-view-tree"></div>
+      </section>
+
+      <section id="reportsTab" class="tab-content">
+        <div class="section-title report-page-title">
+          <div><h2>Raporlar</h2><p>Raporlar mevcut Space'in SDP kayıtlarından oluşturulur.</p></div>
+          <div class="reports-last-updated" id="reportsLastUpdated">Son Güncelleme: Henüz yüklenmedi</div>
+        </div>
+        <div class="panel">
+          <div class="report-section-header" id="sprintReportToggle">
+            <h3 style="margin:0;">Sprint Raporu</h3>
+            <span class="report-collapse-icon" id="sprintReportCollapseIcon">▾</span>
+          </div>
+          <div id="sprintReportBody" class="report-split">
+            <div class="report-split-left">
+              <div class="report-velocity-header">
+                <div class="report-header-row">
+                  <h4>Aktif Sprintler</h4>
+                  <button class="secondary-btn report-export-btn" id="exportActiveSprintsBtn">Excel İndir</button>
+                </div>
+                <p class="report-velocity-subtitle">Şu an <b>devam eden</b> her sprint'in içindeki işleri ve ilerlemesini gösterir — bir kartın üstüne tıklayınca, içindeki her işin durumunu ve kimde olduğunu görebilirsin.</p>
+              </div>
+              <div id="activeSprintCards" class="report-sprint-cards"></div>
+            </div>
+            <div class="report-split-right">
+              <div class="report-velocity-header">
+                <div class="report-header-row">
+                  <h4>Geçmiş Sprint Performansı</h4>
+                  <button class="secondary-btn report-export-btn" id="exportSprintHistoryBtn">Excel İndir</button>
+                </div>
+                <p class="report-velocity-subtitle">Her çubuk, <b>kapanmış bir sprint'in</b> ne kadarının tamamlandığını gösterir — sprint'ten sprint'e ekibin performansı nasıl değişiyor, burada görürsün.</p>
+              </div>
+              <div class="report-donut-controls">
+                <select id="reportVelocityMonth">
+                  <option value="">Ay</option>
+                  <option value="1">Ocak</option><option value="2">Şubat</option><option value="3">Mart</option>
+                  <option value="4">Nisan</option><option value="5">Mayıs</option><option value="6">Haziran</option>
+                  <option value="7">Temmuz</option><option value="8">Ağustos</option><option value="9">Eylül</option>
+                  <option value="10">Ekim</option><option value="11">Kasım</option><option value="12">Aralık</option>
+                </select>
+                <select id="reportVelocityYear"><option value="">Yıl</option></select>
+                <button class="secondary-btn report-custom-range-btn" id="reportCustomRangeBtn">Özel Aralık</button>
+                <button class="secondary-btn report-custom-range-btn" id="reportAllTimeBtn">Tüm Zamanlar</button>
+              </div>
+              <div class="report-custom-range-row" id="reportCustomRangeRow" style="display:none;">
+                <input type="date" id="reportRangeStart" />
+                <span>—</span>
+                <input type="date" id="reportRangeEnd" />
+                <button class="primary-btn" id="reportRangeApplyBtn">Uygula</button>
+              </div>
+              <div id="sprintVelocityTrend"></div>
+            </div>
+          </div>
+        </div>
+        <div id="epicReportSection" style="margin-top:20px;">
+          <div class="panel">
+            <div class="report-section-header" id="epicReportToggle">
+              <h3 style="margin:0;">Epic Raporu</h3>
+              <span class="report-collapse-icon collapsed" id="epicReportCollapseIcon">▾</span>
+            </div>
+            <div id="epicReportBody" style="display:none; padding-top:14px; border-top:1px solid var(--border);">
+              <div class="report-header-row" style="margin-bottom:10px;">
+                <p class="report-velocity-subtitle" style="margin:0; max-width:900px;">Epic bazında teknisyen, durum, bağlı Story/Task/Bug sayısı, açık-kapalı iş dağılımı, Sprint kapsamı ve gerçek tamamlanma oranını gösterir. Kartı açarak Epic altındaki işleri tek tek görebilirsin.</p>
+                <button class="secondary-btn report-export-btn" id="exportEpicReportBtn">Excel İndir</button>
+              </div>
+              <div id="epicReportContent"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <aside id="detailDrawer" class="detail-drawer">
+    <div class="drawer-header">
+      <div>
+        <span id="drawerTicketId" class="ticket-id"></span>
+        <h2 id="drawerTitle"></h2>
+        <span id="drawerParentEpic" class="drawer-parent-chip" style="display:none;"></span>
+      </div>
+      <button id="closeDrawerBtn" class="icon-btn">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-meta">
+        <div class="field-group">
+          <label>İş Tipi</label>
+          <select id="drawerWorkItemType">
+            <option value="Story">Story</option>
+            <option value="Task">✓ Task</option>
+            <option value="Bug">Bug</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Durum</label>
+          <select id="drawerStatus"></select>
+        </div>
+        <div id="drawerResolutionBox" style="display:none;"></div>
+        <div class="field-group">
+          <label>Atanan Kişi</label>
+          <select id="drawerAssignee"></select>
+        </div>
+        <div class="field-group">
+          <label>Sprint</label>
+          <select id="drawerSprint"></select>
+        </div>
+        <div class="field-group">
+          <label>Epic</label>
+          <select id="drawerEpic"></select>
+        </div>
+        <div class="field-group">
+          <label>Öncelik</label>
+          <select id="drawerPriority"></select>
+        </div>
+        <div class="field-group">
+          <label>SLA Durumu</label>
+          <select id="drawerSla" disabled>
+            <option value="Healthy">Healthy</option>
+            <option value="At Risk">At Risk</option>
+            <option value="Breached">Breached</option>
+          </select>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h3>Açıklama</h3>
+        <p id="drawerDescription"></p>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-section-header">
+          <h3 id="subtasksHeaderTitle">Alt Görevler</h3>
+          <button id="addTaskBtn" class="icon-btn-small" title="Alt görev ekle">+</button>
+        </div>
+        <div id="drawerTaskAddForm" class="task-add-form" style="display:none;">
+          <input id="newTaskTitle" type="text" placeholder="Alt görev başlığı..." />
+          <textarea id="newTaskDescription" rows="2" placeholder="Açıklama (opsiyonel)..." style="width:100%; margin-bottom:8px; resize:vertical; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:8px 10px; font-size:13px; font-family:inherit;"></textarea>
+          <select id="newTaskOwner"></select>
+          <label class="task-form-label">Planlanan Başlangıç (opsiyonel)</label>
+          <input id="newTaskStart" type="date" />
+          <label class="task-form-label">Planlanan Bitiş (opsiyonel)</label>
+          <input id="newTaskEnd" type="date" />
+          <label class="task-form-label">Öncelik (opsiyonel)</label>
+          <select id="newTaskPriority"><option value="">Belirtilmedi</option></select>
+          <div class="modal-actions" style="margin-top:8px;">
+            <button id="cancelTaskAddBtn" class="secondary-btn">İptal</button>
+            <button id="submitTaskAddBtn" class="primary-btn">Ekle</button>
+          </div>
+        </div>
+        <div id="drawerTaskList" class="task-list"></div>
+      </div>
+      <div class="drawer-section" id="drawerAttachmentSection"></div>
+      <div class="drawer-section">
+        <h3>Aktivite Geçmişi</h3>
+        <ul id="drawerActivity"></ul>
+      </div>
+    </div>
+    <div class="drawer-footer">
+      <button id="saveDrawerBtn" class="primary-btn" style="width:100%;">Kaydet</button>
+    </div>
+  </aside>
+
+  <div id="resolutionModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3>Çözüm Gerekli</h3>
+      <p>Bu kaydı sonlandırmak (Resolved/Closed) için lütfen yapılan işlemi açıklayın.</p>
+      <textarea id="resolutionText" rows="4" placeholder="Çözüm detaylarını buraya yazın..."></textarea>
+      <div class="modal-actions">
+        <button id="cancelResolutionBtn" class="secondary-btn">İptal Et</button>
+        <button id="submitResolutionBtn" class="primary-btn">Kaydet ve Onayla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teknisyen native API'ye erişemezse bir kereye mahsus kendini seçmesi için -->
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 id="confirmModalTitle">Emin misiniz?</h3>
+      <p id="confirmModalText"></p>
+      <div class="modal-actions">
+        <button id="confirmModalCancelBtn" class="secondary-btn">İptal</button>
+        <button id="confirmModalOkBtn" class="primary-btn">Onayla</button>
+      </div>
+    </div>
+  </div>
+<!-- Ayarlar ve Kurulum Sihirbazı Modalı -->
+
+
+  <div id="drawerOverlay" class="drawer-overlay"></div>
+
+  <!-- Sohbet -->
+  <button id="chatFabBtn" class="chat-fab" title="Sohbet"></button>
+  <div id="chatOverlay" class="chat-overlay"></div>
+  <div id="chatPanel" class="chat-panel">
+    <div class="chat-panel-header">
+      <strong>Sohbet</strong>
+      <button id="closeChatBtn" class="icon-btn">×</button>
+    </div>
+    <div class="chat-panel-body">
+      <div class="chat-entity-sidebar">
+        <div class="chat-entity-search">
+          <input type="text" id="chatEntitySearch" placeholder="Ara..." />
+          <div class="chat-entity-filter-chips">
+            <button class="chat-filter-chip active" data-chat-filter="all">Tümü</button>
+            <button class="chat-filter-chip" data-chat-filter="epic">Epic</button>
+            <button class="chat-filter-chip" data-chat-filter="Story">Story</button>
+            <button class="chat-filter-chip" data-chat-filter="Task">Task</button>
+            <button class="chat-filter-chip" data-chat-filter="Bug">Bug</button>
+            <button class="chat-filter-chip" data-chat-filter="sprint">Sprint</button>
+            <button class="chat-filter-chip" data-chat-filter="subtask">Alt Görev</button>
+          </div>
+        </div>
+        <div class="chat-entity-tree" id="chatEntityTree"></div>
+      </div>
+      <div class="chat-thread">
+        <div class="chat-thread-header" id="chatThreadHeader">Konuşmak için soldan bir Epic, iş veya Sprint seç.</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-row" id="chatInputRow" style="display:none;">
+          <textarea id="chatInput" rows="1" placeholder="Mesaj yaz..."></textarea>
+          <button id="chatSendBtn" class="icon-btn-small"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="spaceSelectorScreen" class="space-selector-screen">
+    <div class="space-selector-inner">
+      <h1>Space Seç</h1>
+      <p>Çalışmak istediğin proje alanını seç, ya da yeni bir tane oluştur.</p>
+      <button id="newSpaceBtn" class="primary-btn" style="margin-bottom:24px;">+ Yeni Space Oluştur</button>
+      <div id="spaceCardsList" class="space-cards-grid"></div>
+    </div>
+  </div>
+
+  <div id="newSpaceModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 id="newSpaceModalTitle">Yeni Space</h3>
+      <div class="drawer-meta" style="margin-bottom:16px; grid-template-columns: 1fr;">
+        <div class="field-group">
+          <label>Ad</label>
+          <input id="newSpaceName" type="text" placeholder="Mobil Uygulama Ekibi" />
+        </div>
+        <div class="field-group">
+          <label>Key</label>
+          <input id="newSpaceKey" type="text" placeholder="MOB" maxlength="10" style="text-transform:uppercase;" />
+        </div>
+        <div class="field-group">
+          <label>Açıklama</label>
+          <textarea id="newSpaceDescription" rows="3" placeholder="Bu space ne için kullanılıyor?"></textarea>
+        </div>
+        <div class="field-group">
+          <label>Durum</label>
+          <select id="newSpaceStatus">
+            <option value="Open">Open</option>
+            <option value="Assigned">Assigned</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Inhold">Inhold</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Sorumlu</label>
+          <select id="newSpaceAssignee"></select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="cancelNewSpaceBtn" class="secondary-btn">İptal</button>
+        <button id="submitNewSpaceBtn" class="primary-btn">Oluştur</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sprintDetailModal" class="modal-overlay"></div>
+  <div id="epicDetailModal" class="modal-overlay"></div>
+  <div id="taskDetailModal" class="modal-overlay"></div>
+  <div id="toastContainer" class="toast-container"></div>
+  <script>window.APP_MODE = "technician";</script>
+  <script src="00-state-config.js"></script>
+  <script src="01-setup.js"></script>
+  <script src="02-app-lifecycle.js"></script>
+  <script src="03-data-core.js"></script>
+  <script src="04-api-space.js"></script>
+  <script src="05-api-epic.js"></script>
+  <script src="06-data-sprint-directory.js"></script>
+  <script src="07-data-loader.js"></script>
+  <script src="08-api-client.js"></script>
+  <script src="09-attachments.js"></script>
+  <script src="10-api-history-tasks.js"></script>
+  <script src="11-api-sprint.js"></script>
+  <script src="12-service-sprint-lifecycle.js"></script>
+  <script src="13-ui-core.js"></script>
+  <script src="14-ui-filters.js"></script>
+  <script src="15-view-dashboard.js"></script>
+  <script src="16-view-board.js"></script>
+  <script src="17-view-drawer-tasks.js"></script>
+  <script src="18-util-xlsx.js"></script>
+  <script src="19-report-sprint.js"></script>
+  <script src="20-report-epic.js"></script>
+  <script src="21-report-workload.js"></script>
+  <script src="22-report-events.js"></script>
+  <script src="23-view-backlog.js"></script>
+  <script src="24-view-list.js"></script>
+  <script src="25-service-epic-lifecycle.js"></script>
+  <script src="26-view-entity-modals.js"></script>
+  <script src="27-view-epic-detail.js"></script>
+  <script src="28-view-sprint-detail.js"></script>
+  <script src="29-auth-identity.js"></script>
+  <script src="30-feature-chat.js"></script>
+  <script src="31-util-ui.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
